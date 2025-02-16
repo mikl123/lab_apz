@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package greeter;
+
+
+message MessageData {
+  string msg = 1;
+  string uuid = 2;
+}
+
+message Empty {
+}
+
+message Status {
+  string msg = 1;
+}
+
+message Database {
+  repeated MessageData data = 1;
+}
+
+service LoggingService {
+  rpc Send (MessageData) returns (Status);
+  rpc getData (Empty) returns (Database);
+}
+
+service MessageService {
+  rpc getData (Empty) returns (Status);
+}

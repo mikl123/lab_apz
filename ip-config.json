@@ -1,0 +1,5 @@
+{
+    "logging-service": ["http://localhost:5001", "http://localhost:5002", "http://localhost:5003"],
+    "message-service": ["http://localhost:5004"]
+}
+  

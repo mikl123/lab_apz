@@ -1,12 +1,7 @@
 Lab Mykhailo Buleshyi
 
-Виконав два додаткових завдання.
-1) Зробити retry
-2) Зробити комунікацію між facade-service і logging-service та message-service використовуючи gRPC.
-
-Для тестування retry в кореневій папці logging-service є `add_delay = True # needed for retry system check.` який штучно додає delay, щоб тільки третя спроба зареєструвати повідомлення була успішна.
-
-Для gRPC створив окрему папку, з тими самими файлами.
+Виконав додаткове завдання.
+1) Зробити окремий сервіс для визначення ip.
 
 Для тестування всіх підходів створив скрипт `user.py` який робить POST та GET запити до facade-service.
 
@@ -15,8 +10,11 @@ Lab Mykhailo Buleshyi
 2) ./venv/Script/activate
 3) pip install -r requirements.txt
 4) python facade-service.py
-5) python logging-service.py
-6) python message-service.py
-7) python user.py
+5) python logging-service.py -- port 5001
+6) python logging-service.py -- port 5002
+7) python logging-service.py -- port 5003
+8) python message-service.py
+9) python config-server.py
+10) python user.py
 
-   
+Якщо обрано інші порти для logging-service тоді доведеться змінити ip-config.json

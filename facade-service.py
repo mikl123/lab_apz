@@ -3,10 +3,23 @@ import requests
 import uuid
 import time
 import random
+from confluent_kafka import Producer
 
 app = Flask(__name__)
 
 config_ip = 'http://localhost:5005'
+
+conf = {
+    'bootstrap.servers': 'localhost:8097,localhost:8098,localhost:8099',
+}
+
+def delivery_report(err, msg):
+    if err is not None:
+        print('Delivery failed:', err)
+    else:
+        print('Message delivered to', msg.topic(), msg.partition())
+
+producer = Producer(conf)
 
 def get_ip_adress(name):
     ips = requests.get(f"{config_ip}/get_ip", params={'service_name': name})
@@ -56,6 +69,10 @@ def send_data():
     print(f"-------Facade-service generated uuid and sends {data} to logging-service---------")
 
     response = make_request_with_retry(f"{random_ip}/send", data = data, request_type = "post")
+    
+    producer.produce('messages', partition = random.randint(0,2), value=data['msg'], callback=delivery_report)
+    producer.flush()
+
 
     if response.status_code == 200:
         return jsonify({"message": "Data sent successfully!"}), 200

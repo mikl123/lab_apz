@@ -17,4 +17,4 @@ def receive_ip():
     return jsonify({"ips": data[service_name]}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5005)
+    app.run(debug=True, port=5006)

@@ -4,13 +4,27 @@ import uuid
 import time
 import random
 from confluent_kafka import Producer
+from consul import Consul
+import json
 
 app = Flask(__name__)
 
-config_ip = 'http://localhost:5006'
+consul = Consul(host='localhost', port=8500)
 
+def get_kafka_adresses():
+    _, data = consul.kv.get('config/kafka')
+    config = None
+    if data:
+        json_data = data['Value'].decode('utf-8')
+        config = json.loads(json_data)
+        print("Reading kafka setup:", config)
+    else:
+        print("Cannot read kafka setup from consul.")
+    print(config)
+    return ",".join([f"localhost:{port}" for port in config["service"]["ports"]])
+    
 conf = {
-    'bootstrap.servers': 'localhost:8097,localhost:8098,localhost:8099',
+    'bootstrap.servers': get_kafka_adresses(),
 }
 
 def delivery_report(err, msg):
@@ -21,12 +35,26 @@ def delivery_report(err, msg):
 
 producer = Producer(conf)
 
-def get_ip_adress(name):
-    ips = requests.get(f"{config_ip}/get_ip", params={'service_name': name})
-    if ips.status_code != 200:
-        print('Error getting ip adress')
-    ips = ips.json()['ips']
-    return ips
+
+def get_ip_address(service_name):
+    """This functions seeks int consule available adresses for give service_name"""
+    try:
+        services = consul.health.service(service_name)
+        if not services:
+            print(f"No services found for '{service_name}'")
+            return None
+        ip_port_pairs = []
+        for service in services[1]:
+            port = service["Service"]["Port"]
+            if service['Checks'][-1]['Status'] == 'passing':
+                ip_port_pairs.append(port)
+        if len(ip_port_pairs) >= 1:
+            selected_port = random.choice(ip_port_pairs)
+        print("All ports available for " ,service_name , " " ,  ip_port_pairs)
+        return f"http://localhost:{selected_port}"
+    except Exception as e:
+        print(f"Error getting IP address for service '{service_name}': {str(e)}")
+        return None
 
 def make_request_with_retry(request, data = None, request_type = "post", n_retries = 3, delay_between_retry = 1, timeout = 2):
     response = 1
@@ -54,10 +82,10 @@ def make_request_with_retry(request, data = None, request_type = "post", n_retri
 @app.route('/send', methods=['POST'])
 def send_data():
 
-    ips_logging = get_ip_adress('logging-service')
-    if not ips_logging:
+    random_ip = get_ip_address('logging-service')
+    print(random_ip)
+    if not random_ip:
         return jsonify({"message": "Failed to get ip adress"}), 500
-    random_ip = random.choice(ips_logging)
 
     data = request.json
     random_uuid = uuid.uuid4()
@@ -82,15 +110,12 @@ def send_data():
 @app.route('/get', methods=['GET'])
 def get_data():
     print("-------Facade-service recived Get request--------")
-    ips_logging = get_ip_adress('logging-service')
-    if not ips_logging:
+    random_ip_logging = get_ip_address('logging-service')
+    if not random_ip_logging:
         return jsonify({"message": "Failed to get ip adress"}), 500
-    ips_message = get_ip_adress('message-service')
-    if not ips_message:
+    random_ip_message = get_ip_address('message-service')
+    if not random_ip_message:
         return jsonify({"message": "Failed to get ip adress"}), 500
-    print(ips_logging)
-    random_ip_logging = random.choice(ips_logging)
-    random_ip_message = random.choice(ips_message)
     print('Used ',random_ip_logging, ' as logging service')
     response1 = make_request_with_retry(f"{random_ip_logging}/get", request_type = "get")
     response2 = make_request_with_retry(f"{random_ip_message}/get", request_type = "get")
@@ -102,7 +127,21 @@ def get_data():
                         "logging-service": response1.json()}), 200
     else:
         return jsonify({"message": "Failed to recieve data"}), 500
-
+    
+@app.route('/health')
+def health_check():
+    return 'OK', 200
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = 5000
+    consul.agent.service.register(
+        'facade-service',
+        service_id=f'facade-id-{port}',
+        port=port,
+        tags=['go'],                 
+        check={
+            'http': f'http://{YOUR_IP}:{port}/health',
+            'interval': '10s'
+        }
+    )
+    app.run(debug=True, host="0.0.0.0", port=5000)

@@ -6,15 +6,26 @@ Note!!!! - для виконання цієї лабораторної я вик
 
 Для тестування всіх підходів створив скрипт `user.py` який робить POST та GET запити до facade-service.
 
-Спочатку потрібно запустити kafka брокери
+Потрібно запустити Consul
+source setup_consul.bash
+Цей код створить контейнер для Consul.
+
+Потрібно запустити kafka брокери
 1) docker compose up -d
 2) docker exec -it kafka1 kafka-topics --create \
   --topic messages \
   --bootstrap-server kafka1:9092 \
   --replication-factor 2 \
   --partitions 2
+Треба додати адреси черг в Consule як key/value
+3) docker exec consule consul kv put config/kafka '{"service": {"ports": [8097, 8098, 8099]}}'
+Та додати вибір для Hazelcast словника (Hazelcast)
+4) docker exec consule consul kv put config/hazelcast '{"service": {"map":"map_name"}}'
+
+Також потрібно запустити як мінімум один Hazelcast node
 
 
+Спочатку потрібно в facade-service.py, logging-service.py, message-service.py додати свою ip адресу
 Як запустити сервери?
 1) python -m venv venv
 2) ./venv/Script/activate
@@ -25,26 +36,24 @@ Note!!!! - для виконання цієї лабораторної я вик
 7) python logging-service.py -- port 5003
 8) python message-service.py -- port 5004 --partition 1
 8) python message-service.py -- port 5005 --partition 1
-9) python config-server.py
 10) python user.py
 
-Якщо обрано інші порти для logging-service тоді доведеться змінити ip-config.json
 
+### Звіт.
 
-### Тестування.
+Після виконання setup_consule.bash я отримав контейнер з consule
+![alt text](images/image.png)
 
-Спершу налаштував брокери kafka![alt text](images/image1.png)
+Далі додав сервіси, також налаштував check (щоб перевіряти чи вони активні). Для початку всі сервіси активні
+![alt text](images/image-1.png)
 
-Я надіслав 10 повідомлень та отримав з facade service такий output. ![alt text](images/image.png)
-з logging service отримав усі 10 повідомлень з message service отримав лише ті які зберігаються на даній копії.
+При виконанні коду все працює добре і кожен сервіс знає про робочі інші.
+![alt text](images/image-2.png)
 
-Логи з logging service![alt text](images/image_2.png)
+Далі я виключив декілька сервісів оновлену інформацію check я побачив в Consul
+![alt text](images/image-4.png)
+![alt text](images/image-3.png)
 
-Логи з message service 
-![alt text](images/image_3.png)
+При повторній спробі запустити тест коду я отримав лише активні адреси
+![alt text](images/image-5.png)
 
-#### Відмовостійкість
-
-Далі я тестував відмовостійкість. Спочатку з виключеними message service я надіслав 10 повідомлень далі вимкнув kafka1 брокер (Leader). Через те що в мене налаштована реплікація інший брокер стане лідером і всі данні буде збереженно (адже в моєму випадку данні зберігаються одночасно на всіх брокерах) ![alt text](images/image_4.png).
-
-Далі запусти message service і отримав всі десять повідомлень. ![alt text](images/image_5.png)

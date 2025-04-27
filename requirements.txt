@@ -3,3 +3,4 @@ requests
 grpcio-tools
 hazelcast-python-client
 confluent-kafka
+python-consul

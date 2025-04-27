@@ -16,8 +16,10 @@ source setup_consul.bash
   --bootstrap-server kafka1:9092 \
   --replication-factor 2 \
   --partitions 2
+  
 Треба додати адреси черг в Consule як key/value
 3) docker exec consule consul kv put config/kafka '{"service": {"ports": [8097, 8098, 8099]}}'
+
 Та додати вибір для Hazelcast словника (Hazelcast)
 4) docker exec consule consul kv put config/hazelcast '{"service": {"map":"map_name"}}'
 
@@ -45,6 +47,10 @@ source setup_consul.bash
 
 Далі додав сервіси, також налаштував check (щоб перевіряти чи вони активні). Для початку всі сервіси активні
 ![alt text](images/image-1.png)
+Можна побачити збережені key value значення
+![alt text](images/image-6.png)
+Наприклад так це виглядає для kafka
+![alt text](images/image-7.png)
 
 При виконанні коду все працює добре і кожен сервіс знає про робочі інші.
 ![alt text](images/image-2.png)
